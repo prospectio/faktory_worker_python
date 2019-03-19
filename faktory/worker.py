@@ -1,5 +1,3 @@
-from typing import Iterable
-
 import logging
 import uuid
 import time
@@ -8,7 +6,6 @@ import signal
 
 from datetime import datetime, timedelta
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, Executor
-from concurrent.futures.process import BrokenProcessPool
 
 from collections import namedtuple
 
@@ -224,15 +221,13 @@ class Worker:
                 try:
                     future.result(timeout=1)
                     self._ack(future.job_id)
-                except BrokenProcessPool:
-                    self._fail(future.job_id)
                 except KeyboardInterrupt:
                     self._fail(future.job_id)
                 except Exception as e:
                     self._fail(future.job_id, exception=e)
                     self.log.exception("Task failed: {}".format(future.job_id))
 
-    def _process(self, jid: str, job: str, args):
+    def _process(self, jid, job, args):
         try:
             task = self.get_registered_task(job)
             if task.bind:
@@ -246,11 +241,11 @@ class Worker:
         except (KeyError, Exception) as e:
             self._fail(jid, exception=e)
 
-    def _ack(self, jid: str):
+    def _ack(self, jid):
         self.faktory.reply("ACK", {'jid': jid})
         ok = next(self.faktory.get_message())
 
-    def _fail(self, jid: str, exception=None):
+    def _fail(self, jid, exception=None):
         response = {
             'jid': jid
         }
@@ -275,7 +270,7 @@ class Worker:
         raise KeyboardInterrupt
 
     @property
-    def should_fetch_job(self) -> bool:
+    def should_fetch_job(self):
         return not (self.is_disconnecting or self.is_quiet) and len(self._pending) < self.concurrency
 
     @property
@@ -283,7 +278,7 @@ class Worker:
         return len(self._pending) == 0
 
     @property
-    def should_send_heartbeat(self) -> bool:
+    def should_send_heartbeat(self):
         """
         Checks `self._last_heartbeat` and `self.send_heartbeat_every` to figure out of this worker needs to send a
         heartbeat to the Faktory server. The beat should be sent once per 60s max, and defaults to once per 15s.
@@ -321,7 +316,7 @@ class Worker:
         self._last_heartbeat = datetime.now()
 
     @property
-    def executor(self) -> Executor:
+    def executor(self):
         """
         Return the concurrent.futures executor instance to use for this worker.
 
@@ -336,7 +331,7 @@ class Worker:
             self._executor = self._executor_class(max_workers=self.concurrency)
         return self._executor
 
-    def get_queues(self) -> Iterable:
+    def get_queues(self):
         """
         Returns a list of queues that this worker should be process. You can override this in a subclass to adjust the
         queues at runtime.
@@ -346,7 +341,7 @@ class Worker:
         """
         return self._queues
 
-    def get_worker_id(self) -> str:
+    def get_worker_id(self):
         """
         Returns a unique ID for this worker. This method is called once, during setup of the connection. It should not
         change the worker_id during the lifetime of the worker.
@@ -359,8 +354,8 @@ class Worker:
         """
         return uuid.uuid4().hex
 
-    def get_registered_task(self, name: str) -> Task:
+    def get_registered_task(self, name):
         try:
             return self._tasks[name]
         except KeyError:
-            raise ValueError("'{}' is not a registered task".format(name)) from None
+            raise ValueError("'{}' is not a registered task".format(name))

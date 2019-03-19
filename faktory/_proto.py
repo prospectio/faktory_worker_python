@@ -1,4 +1,4 @@
-from typing import Iterator, Optional
+from __future__ import unicode_literals
 
 import logging
 import hashlib
@@ -8,7 +8,7 @@ import json
 import socket
 import ssl
 
-from urllib.parse import urlparse
+from urlparse import urlparse
 
 from .exceptions import FaktoryHandshakeError, FaktoryAuthenticationError
 
@@ -51,7 +51,7 @@ class Connection:
 
         self.log = log or logging.getLogger(name='faktory.connection')
 
-    def connect(self, worker_id: str = None) -> bool:
+    def connect(self, worker_id= None):
         self.log.info("Connecting to {}:{}".format(self.host, self.port))
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -87,7 +87,7 @@ class Connection:
 
             nonce = handshake.get('s')
             if nonce and self.password:
-                response['pwdhash'] = hashlib.sha256(str.encode(self.password) + str.encode(nonce)).hexdigest()
+                response['pwdhash'] = hashlib.sha256(self.password + nonce).hexdigest()
         except (ValueError, TypeError):
             self.socket.close()
             raise FaktoryHandshakeError("Could not connect to Faktory; expected handshake format")
@@ -107,10 +107,10 @@ class Connection:
         self.is_connected = True
         return self.is_connected
 
-    def is_supported_server_version(self, v: int):
+    def is_supported_server_version(self, v):
         return v == 2
 
-    def get_message(self) -> Iterator[str]:
+    def get_message(self):
         socket = self.socket
         buffer = socket.recv(self.buffer_size)
         while True:
@@ -120,15 +120,15 @@ class Connection:
                     (line, buffer) = buffer.split(b"\r\n", 1)
                     if len(line) == 0:
                         continue
-                    elif chr(line[0]) == '+':
+                    elif line[0] == '+':
                         resp = line[1:].decode().strip("\r\n ")
                         if self.debug: self.log.debug("> {}".format(resp))
                         yield resp
-                    elif chr(line[0]) == '-':
+                    elif line[0] == '-':
                         resp = line[1:].decode().strip("\r\n ")
                         if self.debug: self.log.debug("> {}".format(resp))
                         yield resp
-                    elif chr(line[0]) == '$':
+                    elif line[0] == '$':
                         # read $xxx bytes of data into a buffer
                         number_of_bytes = int(line[1:]) + 2  # add 2 bytes so we read the \r\n from the end
                         if number_of_bytes <= 1:
@@ -155,7 +155,7 @@ class Connection:
                     else:
                         buffer += more
 
-    def fetch(self, queues) -> Optional[dict]:
+    def fetch(self, queues):
         self.reply("FETCH {}".format(" ".join(queues)))
         job = next(self.get_message())
         if not job:
@@ -172,7 +172,7 @@ class Connection:
                 s = "{} {}".format(s, json.dumps(data))
             else:
                 s = "{} {}".format(s, data)
-        self.socket.send(str.encode(s + "\r\n"))
+        self.socket.send(s + "\r\n")
 
     def disconnect(self):
         self.log.info("Disconnected")

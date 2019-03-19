@@ -1,5 +1,5 @@
-import typing
 import uuid
+import collections
 
 from ._proto import Connection
 
@@ -25,7 +25,7 @@ class Client:
         self.faktory.disconnect()
         self.is_connected = False
 
-    def queue(self, task: str, args: typing.Iterable=None, queue: str='default', priority: int=5, jid: str=None, custom=None, reserve_for=None, at=None, retry=5):
+    def queue(self, task, args=None, queue='default', priority=5, jid=None, custom=None, reserve_for=None, at=None, retry=5):
         was_connected = self.is_connected
         if not self.is_connected:
             # connect if we are not already connected
@@ -54,7 +54,7 @@ class Client:
             request['custom'] = custom
 
         if args is not None:
-            if not isinstance(args, (typing.Iterator, typing.Set, typing.List, typing.Tuple)):
+            if not isinstance(args, (collections.Iterable, set, list, tuple)):
                 raise ValueError("Argument `args` must be an iterator, generator, list, tuple or a set")
 
             request['args'] = list(args)
@@ -75,5 +75,5 @@ class Client:
 
         return ok == "OK"
 
-    def random_job_id(self) -> str:
+    def random_job_id(self):
         return uuid.uuid4().hex
